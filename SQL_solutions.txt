@@ -1,0 +1,72 @@
+/* Query 1 - S1Q1, the query usede for first insight */
+SELECT  f.title AS film_title,
+        c.name AS category_name,
+        COUNT(*) AS rental_count
+FROM    film f
+JOIN    film_category fc
+ON      f.film_id = fc.film_id
+JOIN    category c
+ON      c.category_id = fc.category_id
+JOIN    inventory i
+ON      f.film_id = i.film_id
+JOIN    rental r
+ON      r.inventory_id = i.inventory_id
+WHERE   c.name IN ('Animation', 'Children', 'Classics', 'Comedy', 'Family', 'Music')
+GROUP BY 1, 2
+ORDER BY 2, 1;
+
+/* Query 2 - S1Q2, the query usede for second insight */
+SELECT  film_title,
+        category_name,
+        rental_duration,
+        NTILE(4) OVER (PARTITION  BY category_name ORDER BY rental_duration) AS standard_quartile
+FROM    (SELECT
+        f.title AS film_title,
+        c.name AS category_name,
+        SUM(f.rental_duration) AS rental_duration
+        FROM    film f
+        JOIN    film_category fc
+        ON      f.film_id = fc.film_id
+        JOIN    category c
+        ON      c.category_id = fc.category_id
+        WHERE   c.name IN ('Animation', 'Children', 'Classics', 'Comedy', 'Family', 'Music')
+        GROUP BY 1, 2) t1
+GROUP BY 1, 2, 3
+ORDER BY 4;
+
+/* Query 3 - S1Q3, the query usede for third insight */
+WITH    t2 AS   (SELECT film_title,
+                        category_name,
+                        rental_duration,
+                        NTILE(4) OVER (PARTITION  BY category_name ORDER BY rental_duration) AS standard_quartile
+                FROM    (SELECT
+                        f.title AS film_title,
+                        c.name AS category_name,
+                        f.rental_duration AS rental_duration
+                        FROM    film f
+                        JOIN    film_category fc
+                        ON      f.film_id = fc.film_id
+                        JOIN    category c
+                        ON      c.category_id = fc.category_id
+                        WHERE   c.name IN ('Animation', 'Children', 'Classics', 'Comedy', 'Family', 'Music')
+                        GROUP BY 1, 2, 3) t1
+                GROUP BY 1, 2, 3
+                ORDER BY 4)
+
+SELECT  category_name,
+        standard_quartile,
+        COUNT(*)
+FROM    t2
+GROUP BY 1, 2
+ORDER BY 1, 2;
+
+/* Query 4 - S2Q1, the query usede for fourth insight */
+SELECT	to_char(DATE_TRUNC('month', r.rental_date), 'MM') AS rental_month,
+        to_char(DATE_TRUNC('year', r.rental_date), 'YYYY') AS rental_year,
+        s.store_id,
+        COUNT(*)
+FROM	rental r
+JOIN	staff s
+ON	r.staff_id = s.staff_id
+GROUP BY 1, 2, 3
+ORDER BY 4 DESC, 2, 1, 3;
